@@ -9,6 +9,7 @@ use reqwest::{tls, Proxy};
 use tiktoken_rs::{async_openai::get_chat_completion_max_tokens, get_completion_max_tokens};
 
 const DEFAULT_MAX_TOKENS: usize = 4096;
+const FALLBACK_MODEL: &str = "gpt-4o";
 
 use crate::{settings::OpenAISettings, util::HTTP_USER_AGENT};
 use async_openai::{
@@ -107,15 +108,80 @@ impl OpenAIClient {
         !legacy_models.iter().any(|prefix| model.starts_with(prefix))
     }
 
-    pub(crate) async fn get_completions(&self, prompt: &str) -> Result<String> {
-        let prompt_token_limit =
-            get_completion_max_tokens(&self.model, prompt).unwrap_or_else(|_| {
+    fn fallback_model_for_token_counting(model: &str) -> Option<&'static str> {
+        (model != FALLBACK_MODEL).then_some(FALLBACK_MODEL)
+    }
+
+    fn guess_context_size(model: &str) -> usize {
+        if model.to_lowercase().starts_with("gpt-") {
+            128_000
+        } else {
+            tiktoken_rs::model::get_context_size(model)
+        }
+    }
+
+    fn token_limit_with_fallback<F>(model: &str, mut token_limit: F) -> usize
+    where
+        F: FnMut(&str) -> Result<usize>,
+    {
+        match token_limit(model) {
+            std::result::Result::Ok(limit) => limit,
+            Err(model_error) => {
+                let Some(fallback_model) = Self::fallback_model_for_token_counting(model) else {
+                    warn!(
+                        "Tokenizer lookup failed for fallback model '{}', using default limit {}: {}",
+                        model, DEFAULT_MAX_TOKENS, model_error
+                    );
+                    return DEFAULT_MAX_TOKENS;
+                };
+
                 warn!(
-                    "Unknown model '{}' for token counting, using default limit",
-                    self.model
+                    "Unknown model '{}', using {} as tokenizer proxy: {}",
+                    model, fallback_model, model_error
                 );
-                DEFAULT_MAX_TOKENS
-            });
+                match token_limit(fallback_model) {
+                    std::result::Result::Ok(fallback_limit) => {
+                        Self::adjust_fallback_token_limit(model, fallback_model, fallback_limit)
+                    }
+                    Err(fallback_error) => {
+                        warn!(
+                            "Tokenizer proxy '{}' also failed for model '{}', using default limit {}: {}",
+                            fallback_model, model, DEFAULT_MAX_TOKENS, fallback_error
+                        );
+                        DEFAULT_MAX_TOKENS
+                    }
+                }
+            }
+        }
+    }
+
+    fn adjust_fallback_token_limit(
+        original_model: &str,
+        fallback_model: &str,
+        fallback_limit: usize,
+    ) -> usize {
+        let fallback_context_size = tiktoken_rs::model::get_context_size(fallback_model);
+        let prompt_tokens = fallback_context_size.saturating_sub(fallback_limit);
+        Self::guess_context_size(original_model).saturating_sub(prompt_tokens)
+    }
+
+    fn get_completion_prompt_token_limit(model: &str, prompt: &str) -> usize {
+        Self::token_limit_with_fallback(model, |tokenizer_model| {
+            get_completion_max_tokens(tokenizer_model, prompt)
+        })
+    }
+
+    fn get_chat_prompt_token_limit(
+        model: &str,
+        messages: &[async_openai::types::ChatCompletionRequestMessage],
+    ) -> usize {
+        Self::token_limit_with_fallback(model, |tokenizer_model| {
+            get_chat_completion_max_tokens(tokenizer_model, messages)
+        })
+    }
+
+    pub(crate) async fn get_completions(&self, prompt: &str) -> Result<String> {
+        let prompt_token_limit = Self::get_completion_prompt_token_limit(&self.model, prompt);
 
         if prompt_token_limit < COMPLETION_TOKEN_LIMIT {
             let error_msg =
@@ -156,14 +222,7 @@ impl OpenAIClient {
             .role(Role::User)
             .content(prompt)
             .build()?];
-        let prompt_token_limit = get_chat_completion_max_tokens(&self.model, &messages)
-            .unwrap_or_else(|_| {
-                warn!(
-                    "Unknown model '{}' for token counting, using default limit",
-                    self.model
-                );
-                DEFAULT_MAX_TOKENS
-            });
+        let prompt_token_limit = Self::get_chat_prompt_token_limit(&self.model, &messages);
 
         if prompt_token_limit < COMPLETION_TOKEN_LIMIT {
             let error_msg =
@@ -194,6 +253,85 @@ impl OpenAIClient {
         }
 
         bail!("No completion results returned from OpenAI.")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::cell::RefCell;
+
+    use super::*;
+
+    #[test]
+    fn known_completion_model_uses_existing_tiktoken_limit() {
+        let prompt = "Summarize this small diff.";
+
+        let expected = get_completion_max_tokens("gpt-4", prompt).unwrap();
+        let actual = OpenAIClient::get_completion_prompt_token_limit("gpt-4", prompt);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn unknown_gpt_completion_model_uses_fallback_proxy() {
+        let prompt = "Summarize this small diff.";
+
+        let limit = OpenAIClient::get_completion_prompt_token_limit("gpt-5.3-codex-spark", prompt);
+
+        assert!(
+            limit > 100_000,
+            "unknown gpt-* models should keep a modern context window, got {limit}"
+        );
+    }
+
+    #[test]
+    fn unknown_gpt_chat_model_uses_fallback_proxy() {
+        let messages = [ChatCompletionRequestMessageArgs::default()
+            .role(Role::User)
+            .content("Summarize this small diff.")
+            .build()
+            .unwrap()];
+
+        let limit = OpenAIClient::get_chat_prompt_token_limit("gpt-5.3-codex-spark", &messages);
+
+        assert!(
+            limit > 100_000,
+            "unknown gpt-* chat models should keep a modern context window, got {limit}"
+        );
+    }
+
+    #[test]
+    fn token_limit_falls_back_to_default_when_proxy_fails() {
+        let calls = RefCell::new(Vec::new());
+
+        let limit = OpenAIClient::token_limit_with_fallback("gpt-5.3-codex-spark", |model| {
+            calls.borrow_mut().push(model.to_string());
+            Err(anyhow!("forced tokenizer failure"))
+        });
+
+        assert_eq!(limit, DEFAULT_MAX_TOKENS);
+        assert_eq!(
+            calls.into_inner(),
+            vec![
+                "gpt-5.3-codex-spark".to_string(),
+                FALLBACK_MODEL.to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn fallback_limit_uses_original_gpt_context_size() {
+        let fallback_prompt_tokens = 42;
+        let fallback_limit =
+            tiktoken_rs::model::get_context_size(FALLBACK_MODEL) - fallback_prompt_tokens;
+
+        let adjusted = OpenAIClient::adjust_fallback_token_limit(
+            "gpt-5.3-codex-spark",
+            FALLBACK_MODEL,
+            fallback_limit,
+        );
+
+        assert_eq!(adjusted, 128_000 - fallback_prompt_tokens);
     }
 }
 
