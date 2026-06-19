@@ -1,6 +1,0 @@
-レビュー対象を1ファイルに限定し、該当セルだけ確認します。まず状態とファイル内容を確認します。
-指定セルだけを対象化できる `review` オプションを確認します。
-該当ルールの意図を確認してから、対象セルの評決だけ出します。
-既存の対象セルレビュー出力を確認し、必要なら同じ内容を review-gauntlet に反映します。
-review-gauntlet の次レビュー対象を確認します。
-{"comments":[{"path":".devcontainer/devcontainer.json","content":"Devcontainer image is pinned only to the mutable tag `mcr.microsoft.com/devcontainers/rust:0-1-bullseye`, not an immutable digest. Rebuilding at different times can pull different image contents, reducing CI/development environment reproducibility.","start_line":6,"end_line":6},{"path":".devcontainer/devcontainer.json","content":"`postCreateCommand` runs `cargo install just` without a version pin. This resolves the latest `just` release at container creation time, so the devcontainer environment can change over time; pin a specific version such as `cargo install just@<version>`.","start_line":20,"end_line":20}]}

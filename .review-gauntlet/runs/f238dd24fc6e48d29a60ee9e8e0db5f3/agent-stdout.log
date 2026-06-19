@@ -1,2 +1,0 @@
-レビュー結果を書き込み、JSON検証します。
-完了。`.env.example` の2セルに各1件の finding を記録し、両方の verdict JSON を検証済みです。
