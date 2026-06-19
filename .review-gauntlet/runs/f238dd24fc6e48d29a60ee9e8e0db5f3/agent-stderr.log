@@ -1,0 +1,47 @@
+[0m
+> build · kani/auto
+[0m
+[0m→ [0mSkill "review-gauntlet"
+[0m
+[0m# [0mTodos
+[•] .env.example の対象レビューセルを確認する
+[ ] 関連する設定・ドキュメントとの整合性を確認する
+[ ] review-gauntlet 形式で結果を返す
+[0m
+[0m→ [0mRead .env.example[90m [offset=1, limit=200][0m
+[0m✱ [0mGlob "**/*"[90m in . · 100 matches[0m
+[0m✱ [0mGrep "OPENAI_API_KEY|api-keys|beta\.openai|env|OPENAI"[90m in . · 23 matches[0m
+[0m✱ [0mGrep "OPENAI_API_KEY|api_key|api-key|OPENAI|env"[90m in src · 46 matches[0m
+[0m→ [0mRead README.md[90m [offset=1, limit=240][0m
+[0m→ [0mRead SECURITY.md[90m [offset=1, limit=120][0m
+[0m→ [0mRead .review-gauntlet/runs/1/cells/RGC-ee2c16f9b6ef4bcf/prompt.md[90m [offset=1, limit=120][0m
+[0m→ [0mRead .review-gauntlet/runs/1/cells/RGC-1c8cd3d056cc6467/prompt.md[90m [offset=1, limit=120][0m
+[0m→ [0mRead src/settings.rs[90m [offset=300, limit=45][0m
+[0m→ [0mRead src/help.rs[90m [offset=1, limit=80][0m
+[0m
+[0m# [0mTodos
+[✓] .env.example の対象レビューセルを確認する
+[•] 関連する設定・ドキュメントとの整合性を確認する
+[ ] review-gauntlet 形式で結果を返す
+[0m
+[0m✱ [0mGlob ".review-gauntlet/runs/1/cells/RGC-*/verdict.json"[90m in . · 5 matches[0m
+[0m→ [0mRead .review-gauntlet/runs/1/cells/RGC-ee2c16f9b6ef4bcf/verdict.json[90m [offset=1, limit=100][0m
+[0m
+[0m← [0mWrite .review-gauntlet/runs/1/cells/RGC-1c8cd3d056cc6467/verdict.json
+Wrote file successfully.
+[0m
+[0m$ [0mreview-gauntlet validate-verdict "/Users/tumf/work/gptcommit/.review-gauntlet/runs/1/cells/RGC-ee2c16f9b6ef4bcf/verdict.json" --expected-path .env.example
+valid: True
+path: /Users/tumf/work/gptcommit/.review-gauntlet/runs/1/cells/RGC-ee2c16f9b6ef4bcf/verdict.json
+comment_count: 1
+[0m
+[0m$ [0mreview-gauntlet validate-verdict "/Users/tumf/work/gptcommit/.review-gauntlet/runs/1/cells/RGC-1c8cd3d056cc6467/verdict.json" --expected-path .env.example
+valid: True
+path: /Users/tumf/work/gptcommit/.review-gauntlet/runs/1/cells/RGC-1c8cd3d056cc6467/verdict.json
+comment_count: 1
+[0m
+[0m# [0mTodos
+[✓] .env.example の対象レビューセルを確認する
+[✓] 関連する設定・ドキュメントとの整合性を確認する
+[✓] review-gauntlet 形式で結果を返す
+[0m

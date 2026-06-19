@@ -1,0 +1,3 @@
+レビュー対象を確認して verdict を作成し、指定 validator で検証します。
+verdict JSON の契約検証を実行します。
+完了。`comments: []` で検証済みです。

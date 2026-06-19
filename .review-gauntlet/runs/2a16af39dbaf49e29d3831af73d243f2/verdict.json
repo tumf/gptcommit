@@ -1,0 +1,10 @@
+{
+  "schema_version": 2,
+  "verdict": "finish",
+  "summary": "Resolved all listed findings for .devcontainer/devcontainer.json by confirming the mutable devcontainer image tag and unpinned cargo install issues as real; marks were already recorded in the active session.",
+  "completed_finding_ids": ["RGF-0001", "RGF-0002", "RGF-0003"],
+  "remaining_finding_ids": [],
+  "resolutions": [],
+  "next_turn_instructions": "No remaining findings for this file in this invocation.",
+  "error": null
+}

@@ -1,0 +1,2 @@
+対象ファイルだけを読み、指定セル2件のレビュー出力を作ります。まず内容と状態を確認します。
+{"comments":[{"path":".devcontainer/devcontainer.json","content":"`postCreateCommand` installs `just` without pinning a version, so rebuilt devcontainers can get different tool versions over time and CI/dev environment reproduction may drift. Pin a known-good `just` version or install from a locked project toolchain.","start_line":20,"end_line":20}]}

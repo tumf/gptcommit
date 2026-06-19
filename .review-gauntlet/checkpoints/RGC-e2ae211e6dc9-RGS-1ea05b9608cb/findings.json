@@ -1,0 +1,111 @@
+{
+  "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+  "findings": [
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "content": "`cargo install just` fetches and builds the latest `just` at container creation time, making devcontainer setup non-reproducible and dependent on current crates.io state. Pin the tool version so rebuilds use the same dependency graph.",
+      "finding_id": "RGF-0001",
+      "fingerprint": "ae73663d8d698d54cd166917f754d13fefed2126c5dd8224bac2099c69cc20d7",
+      "latest_occurrence": {
+        "cell_id": "RGC-43e26861c0de25c5",
+        "end_line": 20,
+        "finding_id": "RGF-0001",
+        "imprecise": 0,
+        "occurrence_id": 1,
+        "path": ".devcontainer/devcontainer.json",
+        "run_id": 1,
+        "start_line": 20
+      },
+      "metadata": "{\"fingerprint\":\"ae73663d8d698d54cd166917f754d13fefed2126c5dd8224bac2099c69cc20d7\",\"path\":\".devcontainer/devcontainer.json\",\"rule_id\":\"data-validation\",\"content\":\"`cargo install just` fetches and builds the latest `just` at container creation time, making devcontainer setup non-reproducible and dependent on current crates.io state. Pin the tool version so rebuilds use the same dependency graph.\",\"suggestion_code\":\"\\\"postCreateCommand\\\": \\\"cargo install just --version 1.42.4 --locked\\\",\",\"existing_code\":\"\\\"postCreateCommand\\\": \\\"cargo install just\\\",\",\"start_line\":20,\"end_line\":20,\"thinking\":\"Devcontainer bootstrap commands should be reproducible; unpinned cargo install can change behavior or fail unexpectedly when upstream releases change.\",\"imprecise\":false,\"dismiss_reason\":null}",
+      "path": ".devcontainer/devcontainer.json",
+      "rule_id": "data-validation",
+      "session_id": "RGS-1ea05b9608cb",
+      "state": "confirmed"
+    },
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "content": "The devcontainer base image is referenced by a mutable tag rather than an immutable digest, so CI or developer environments can change when the upstream tag is rebuilt. Pin the image to a digest, or use a project-controlled Dockerfile, to make the container reproducible.",
+      "finding_id": "RGF-0002",
+      "fingerprint": "ceb30ff111add898b388d52f403f22d4432ef02599ffef929dd929bcbaa5b9bf",
+      "latest_occurrence": {
+        "cell_id": "RGC-a260a8736c4cd5bd",
+        "end_line": 6,
+        "finding_id": "RGF-0002",
+        "imprecise": 0,
+        "occurrence_id": 2,
+        "path": ".devcontainer/devcontainer.json",
+        "run_id": 1,
+        "start_line": 6
+      },
+      "metadata": "{\"fingerprint\":\"ceb30ff111add898b388d52f403f22d4432ef02599ffef929dd929bcbaa5b9bf\",\"path\":\".devcontainer/devcontainer.json\",\"rule_id\":\"ci-reproducibility\",\"content\":\"The devcontainer base image is referenced by a mutable tag rather than an immutable digest, so CI or developer environments can change when the upstream tag is rebuilt. Pin the image to a digest, or use a project-controlled Dockerfile, to make the container reproducible.\",\"suggestion_code\":\"    \\\"image\\\": \\\"mcr.microsoft.com/devcontainers/rust:0-1-bullseye@sha256:<pinned-digest>\\\",\",\"existing_code\":\"    \\\"image\\\": \\\"mcr.microsoft.com/devcontainers/rust:0-1-bullseye\\\",\",\"start_line\":6,\"end_line\":6,\"thinking\":\"ci-reproducibility: mutable container tags can shift toolchains and OS packages without a repository change.\",\"imprecise\":false,\"dismiss_reason\":null}",
+      "path": ".devcontainer/devcontainer.json",
+      "rule_id": "ci-reproducibility",
+      "session_id": "RGS-1ea05b9608cb",
+      "state": "confirmed"
+    },
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "content": "The post-create step installs the latest available `just` each time, which makes the development container non-reproducible and can introduce unexpected breakage. Pin the installed crate version.",
+      "finding_id": "RGF-0003",
+      "fingerprint": "3dc30127e03a9e9b64c13d90cc7e72921f7251fca959e6e74c8da033e721cac8",
+      "latest_occurrence": {
+        "cell_id": "RGC-a260a8736c4cd5bd",
+        "end_line": 20,
+        "finding_id": "RGF-0003",
+        "imprecise": 0,
+        "occurrence_id": 3,
+        "path": ".devcontainer/devcontainer.json",
+        "run_id": 1,
+        "start_line": 20
+      },
+      "metadata": "{\"fingerprint\":\"3dc30127e03a9e9b64c13d90cc7e72921f7251fca959e6e74c8da033e721cac8\",\"path\":\".devcontainer/devcontainer.json\",\"rule_id\":\"ci-reproducibility\",\"content\":\"The post-create step installs the latest available `just` each time, which makes the development container non-reproducible and can introduce unexpected breakage. Pin the installed crate version.\",\"suggestion_code\":\"    \\\"postCreateCommand\\\": \\\"cargo install just --version <pinned-version>\\\",\",\"existing_code\":\"    \\\"postCreateCommand\\\": \\\"cargo install just\\\",\",\"start_line\":20,\"end_line\":20,\"thinking\":\"ci-reproducibility: unversioned cargo install resolves to whatever version is latest at container creation time.\",\"imprecise\":false,\"dismiss_reason\":null}",
+      "path": ".devcontainer/devcontainer.json",
+      "rule_id": "ci-reproducibility",
+      "session_id": "RGS-1ea05b9608cb",
+      "state": "confirmed"
+    },
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "content": "The example still documents OPENAI_API_KEY even though the CLI help marks it as deprecated and asks users to prefer GPTCOMMIT__OPENAI__API_KEY. Keeping the deprecated variable in the primary env example can lead new installations to depend on the legacy compatibility path instead of the stable CLI-specific contract.",
+      "finding_id": "RGF-0004",
+      "fingerprint": "2df428cae065eb4394e1913764b17f2d9a41b3231b8fdd28d1aa34d1a2b3a9fb",
+      "latest_occurrence": {
+        "cell_id": "RGC-ee2c16f9b6ef4bcf",
+        "end_line": 2,
+        "finding_id": "RGF-0004",
+        "imprecise": 0,
+        "occurrence_id": 4,
+        "path": ".env.example",
+        "run_id": 2,
+        "start_line": 2
+      },
+      "metadata": "{\"fingerprint\":\"2df428cae065eb4394e1913764b17f2d9a41b3231b8fdd28d1aa34d1a2b3a9fb\",\"path\":\".env.example\",\"rule_id\":\"cli-contract\",\"content\":\"The example still documents OPENAI_API_KEY even though the CLI help marks it as deprecated and asks users to prefer GPTCOMMIT__OPENAI__API_KEY. Keeping the deprecated variable in the primary env example can lead new installations to depend on the legacy compatibility path instead of the stable CLI-specific contract.\",\"suggestion_code\":\"GPTCOMMIT__OPENAI__API_KEY='sk-...'\",\"existing_code\":\"OPENAI_API_KEY='sk-...'\",\"start_line\":2,\"end_line\":2,\"thinking\":\"src/help.rs tells users OPENAI_API_KEY will be deprecated and recommends GPTCOMMIT__OPENAI__API_KEY, so the env example should align with the preferred CLI configuration contract.\",\"imprecise\":false,\"dismiss_reason\":null}",
+      "path": ".env.example",
+      "rule_id": "cli-contract",
+      "session_id": "RGS-1ea05b9608cb",
+      "state": "confirmed"
+    },
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "content": "The example points users to the old beta.openai.com API-key page, while the project README uses platform.openai.com/account/api-keys for the same setup flow. This stale setup URL can send users to outdated documentation when configuring the required key.",
+      "finding_id": "RGF-0005",
+      "fingerprint": "9a937714684b0c58164387bf3217820af1610b911d295eca5429346135898435",
+      "latest_occurrence": {
+        "cell_id": "RGC-1c8cd3d056cc6467",
+        "end_line": 1,
+        "finding_id": "RGF-0005",
+        "imprecise": 0,
+        "occurrence_id": 5,
+        "path": ".env.example",
+        "run_id": 2,
+        "start_line": 1
+      },
+      "metadata": "{\"fingerprint\":\"9a937714684b0c58164387bf3217820af1610b911d295eca5429346135898435\",\"path\":\".env.example\",\"rule_id\":\"docs-accuracy\",\"content\":\"The example points users to the old beta.openai.com API-key page, while the project README uses platform.openai.com/account/api-keys for the same setup flow. This stale setup URL can send users to outdated documentation when configuring the required key.\",\"suggestion_code\":\"# Configure with your account's secret key which can be found at https://platform.openai.com/account/api-keys\",\"existing_code\":\"# Configure with your account's secret key which can be found at https://beta.openai.com/account/api-keys\",\"start_line\":1,\"end_line\":1,\"thinking\":\"README.md line 168 documents the platform.openai.com API-key URL, so .env.example should not advertise the older beta.openai.com location.\",\"imprecise\":false,\"dismiss_reason\":null}",
+      "path": ".env.example",
+      "rule_id": "docs-accuracy",
+      "session_id": "RGS-1ea05b9608cb",
+      "state": "confirmed"
+    }
+  ],
+  "schema_version": 1
+}

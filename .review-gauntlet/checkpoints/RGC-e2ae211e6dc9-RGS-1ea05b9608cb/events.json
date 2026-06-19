@@ -1,0 +1,56 @@
+{
+  "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+  "events": [
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "created_at": "2026-06-19 09:26:25",
+      "event_id": 1,
+      "finding_id": "RGF-0001",
+      "from_state": "open",
+      "metadata": {},
+      "reason": "Line 20 runs cargo install just without --version or --locked, so devcontainer creation resolves the latest crate/dependencies at runtime.",
+      "to_state": "confirmed"
+    },
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "created_at": "2026-06-19 09:26:26",
+      "event_id": 2,
+      "finding_id": "RGF-0002",
+      "from_state": "open",
+      "metadata": {},
+      "reason": "Line 6 uses mcr.microsoft.com/devcontainers/rust:0-1-bullseye without an @sha256 digest, so the base image can change when the mutable tag is rebuilt.",
+      "to_state": "confirmed"
+    },
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "created_at": "2026-06-19 09:26:26",
+      "event_id": 3,
+      "finding_id": "RGF-0003",
+      "from_state": "open",
+      "metadata": {},
+      "reason": "Line 20 installs just without a pinned version, making the devcontainer post-create environment dependent on the current crates.io latest release.",
+      "to_state": "confirmed"
+    },
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "created_at": "2026-06-19 09:28:04",
+      "event_id": 4,
+      "finding_id": "RGF-0004",
+      "from_state": "open",
+      "metadata": {},
+      "reason": "Confirmed: .env.example line 2 documents OPENAI_API_KEY, while src/help.rs tells users OPENAI_API_KEY is deprecated and to prefer GPTCOMMIT__OPENAI__API_KEY or config.",
+      "to_state": "confirmed"
+    },
+    {
+      "checkpoint_id": "RGC-e2ae211e6dc9-RGS-1ea05b9608cb",
+      "created_at": "2026-06-19 09:28:04",
+      "event_id": 5,
+      "finding_id": "RGF-0005",
+      "from_state": "open",
+      "metadata": {},
+      "reason": "Confirmed: .env.example line 1 uses the old beta.openai.com API key URL, while README.md line 168 uses platform.openai.com/account/api-keys.",
+      "to_state": "confirmed"
+    }
+  ],
+  "schema_version": 1
+}

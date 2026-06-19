@@ -1,0 +1,5 @@
+CLIヘルプとREADMEで指摘の事実関係だけ確認します。
+該当2件は実ファイルとCLI/READMEで確認できたため、confirmed として記録します。
+verdictファイルを指定パスへ作成し、専用コマンドで検証します。
+検証で、mark済みの状態を再遷移として書くと弾かれるため、turn verdict 側は完了IDのみへ修正します。
+完了。RGF-0004/RGF-0005 は confirmed、turn verdict は valid=true です。

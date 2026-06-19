@@ -1,0 +1,28 @@
+[0m
+> build · kani/auto
+[0m
+[0m→ [0mSkill "review-gauntlet"
+[0m
+[0m# [0mTodos
+[•] .editorconfigを検査してverdict JSONを作成する
+[ ] review-gauntlet validate-verdictで検証する
+[0m
+[0m→ [0mRead .editorconfig[90m [offset=1, limit=50][0m
+[0m→ [0mRead .review-gauntlet/runs/1/cells/RGC-31b6008be01f1734[90m [offset=1, limit=20][0m
+[0m
+[0m← [0mWrite .review-gauntlet/runs/1/cells/RGC-31b6008be01f1734/verdict.json
+Wrote file successfully.
+[0m
+[0m# [0mTodos
+[✓] .editorconfigを検査してverdict JSONを作成する
+[•] review-gauntlet validate-verdictで検証する
+[0m
+[0m$ [0mreview-gauntlet validate-verdict "/Users/tumf/work/gptcommit/.review-gauntlet/runs/1/cells/RGC-31b6008be01f1734/verdict.json" --expected-path .editorconfig
+valid: True
+path: /Users/tumf/work/gptcommit/.review-gauntlet/runs/1/cells/RGC-31b6008be01f1734/verdict.json
+comment_count: 0
+[0m
+[0m# [0mTodos
+[✓] .editorconfigを検査してverdict JSONを作成する
+[✓] review-gauntlet validate-verdictで検証する
+[0m

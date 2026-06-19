@@ -1,0 +1,22 @@
+{
+  "comments": [
+    {
+      "path": ".devcontainer/devcontainer.json",
+      "content": "The devcontainer base image is referenced by a mutable tag rather than an immutable digest, so CI or developer environments can change when the upstream tag is rebuilt. Pin the image to a digest, or use a project-controlled Dockerfile, to make the container reproducible.",
+      "start_line": 6,
+      "end_line": 6,
+      "existing_code": "    \"image\": \"mcr.microsoft.com/devcontainers/rust:0-1-bullseye\",",
+      "suggestion_code": "    \"image\": \"mcr.microsoft.com/devcontainers/rust:0-1-bullseye@sha256:<pinned-digest>\",",
+      "thinking": "ci-reproducibility: mutable container tags can shift toolchains and OS packages without a repository change."
+    },
+    {
+      "path": ".devcontainer/devcontainer.json",
+      "content": "The post-create step installs the latest available `just` each time, which makes the development container non-reproducible and can introduce unexpected breakage. Pin the installed crate version.",
+      "start_line": 20,
+      "end_line": 20,
+      "existing_code": "    \"postCreateCommand\": \"cargo install just\",",
+      "suggestion_code": "    \"postCreateCommand\": \"cargo install just --version <pinned-version>\",",
+      "thinking": "ci-reproducibility: unversioned cargo install resolves to whatever version is latest at container creation time."
+    }
+  ]
+}

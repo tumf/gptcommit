@@ -1,0 +1,21 @@
+{"stream": "stderr", "text": "  --budget BUDGET       Maximum review budget (default: 50)"}
+{"stream": "stderr", "text": "  --parallel PARALLEL   Parallel workers (default: 3)"}
+{"stream": "stderr", "text": "  --fixture FIXTURE"}
+{"stream": "stderr", "text": "  --config CONFIG"}
+{"stream": "stderr", "text": "  --format {text,json}  Output format (default: text)"}
+{"stream": "stderr", "text": "  --audience {human,agent}"}
+{"stream": "stderr", "text": "                        Progress output audience (default: human)"}
+{"stream": "stderr", "text": "\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m\u2731 \u001b[0mGrep \"ci-reproducibility|data-validation\"\u001b[90m in . \u00b7 3 matches\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m\u2731 \u001b[0mGlob \"**/*review*\"\u001b[90m in . \u00b7 0 matches\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m\u2192 \u001b[0mRead .review-gauntlet/runs/c4b6dd7a1a8b4a019195db966999c52b/agent-stdout.log\u001b[90m [offset=1, limit=80]\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m$ \u001b[0mreview-gauntlet ready --format json"}
+{"stream": "stderr", "text": "{"}
+{"stream": "stderr", "text": "  \"prompt\": \"Use the review-gauntlet task execution skill.\\n\\n## Target file\\nfile_path: .devcontainer/devcontainer.json\\nreason: pending review cells need coverage\\nScope: work only on this file_path. Other files are out of scope for this agent run.\\nYou may inspect related files for context, but do not triage, fix, or mark other files.\\n\\n## Required workflow for this file\\n1. review: inspect the review cells listed below for this file.\\n   Read this file and discover any issues matching the listed rules.\\n   Record issues as open findings through review-gauntlet review output.\\n\\n## Completion condition\\nStop when this target file has no pending cells listed below.\\nDo not continue into another file in this invocation.\\n\\n## Review cells for this file\\n- cell_id: RGC-a260a8736c4cd5bd; state: pending; rule_id: ci-reproducibility; slice_id: config; content_digest: 29f70056ccfffc1b60df13cea427aaf9e62928f5af6b4c2b6b0b25a9eec8514e\\n- cell_id: RGC-43e26861c0de25c5; state: pending; rule_id: data-validation; slice_id: config; content_digest: 29f70056ccfffc1b60df13cea427aaf9e62928f5af6b4c2b6b0b25a9eec8514e\\n\\n## Findings for this file\\n- none\""}
+{"stream": "stderr", "text": "}"}
+{"stream": "stderr", "text": "\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m# \u001b[0mTodos"}
+{"stream": "stderr", "text": "[\u2713] .devcontainer/devcontainer.json \u306e\u6307\u5b9a\u30bb\u30eb\u3092 review-gauntlet \u3067\u78ba\u8a8d\u3059\u308b"}
+{"stream": "stderr", "text": "\u001b[0m"}
+{"event": "agent_completed", "returncode": 0, "failed": false}

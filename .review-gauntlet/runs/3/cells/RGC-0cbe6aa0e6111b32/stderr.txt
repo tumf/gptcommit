@@ -1,0 +1,36 @@
+[0m
+> build · kani/auto
+[0m
+[0m→ [0mSkill "review-gauntlet"
+[0m
+[0m# [0mTodos
+[•] .github/release.yml を確認して ci-reproducibility 観点でレビューする
+[ ] verdict.json を契約どおり作成する
+[ ] review-gauntlet validate-verdict を実行して必要なら修正する
+[0m
+[0m→ [0mRead .github/release.yml[90m [offset=1, limit=120][0m
+[0m✱ [0mGlob "**/*"[90m in .github · 7 matches[0m
+[0m
+[0m# [0mTodos
+[✓] .github/release.yml を確認して ci-reproducibility 観点でレビューする
+[•] verdict.json を契約どおり作成する
+[ ] review-gauntlet validate-verdict を実行して必要なら修正する
+[0m
+[0m← [0mWrite .review-gauntlet/runs/3/cells/RGC-0cbe6aa0e6111b32/verdict.json
+Wrote file successfully.
+[0m
+[0m# [0mTodos
+[✓] .github/release.yml を確認して ci-reproducibility 観点でレビューする
+[✓] verdict.json を契約どおり作成する
+[•] review-gauntlet validate-verdict を実行して必要なら修正する
+[0m
+[0m$ [0mreview-gauntlet validate-verdict "/Users/tumf/work/gptcommit/.review-gauntlet/runs/3/cells/RGC-0cbe6aa0e6111b32/verdict.json" --expected-path .github/release.yml
+valid: True
+path: /Users/tumf/work/gptcommit/.review-gauntlet/runs/3/cells/RGC-0cbe6aa0e6111b32/verdict.json
+comment_count: 0
+[0m
+[0m# [0mTodos
+[✓] .github/release.yml を確認して ci-reproducibility 観点でレビューする
+[✓] verdict.json を契約どおり作成する
+[✓] review-gauntlet validate-verdict を実行して必要なら修正する
+[0m

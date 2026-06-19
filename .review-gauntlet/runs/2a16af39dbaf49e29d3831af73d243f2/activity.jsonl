@@ -1,0 +1,22 @@
+{"stream": "stderr", "text": "  \"valid\": false"}
+{"stream": "stderr", "text": "}"}
+{"stream": "stderr", "text": "\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m$ \u001b[0mreview-gauntlet validate-turn-verdict --help"}
+{"stream": "stderr", "text": "usage: review-gauntlet validate-turn-verdict [-h] [--root ROOT]"}
+{"stream": "stderr", "text": "                                             [--format {text,json}]"}
+{"stream": "stderr", "text": "                                             path"}
+{"stream": "stderr", "text": "positional arguments:"}
+{"stream": "stderr", "text": "  path"}
+{"stream": "stderr", "text": "options:"}
+{"stream": "stderr", "text": "  -h, --help            show this help message and exit"}
+{"stream": "stderr", "text": "  --root ROOT           Repository root for active-session transition"}
+{"stream": "stderr", "text": "                        validation (default: inferred)"}
+{"stream": "stderr", "text": "  --format {text,json}  Output format (default: text)"}
+{"stream": "stderr", "text": "\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m\u2192 \u001b[0mRead .review-gauntlet/turns/RGS-1ea05b9608cb/open__fe4669baabb0.json\u001b[90m [offset=1, limit=200]\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m"}
+{"stream": "stderr", "text": "\u001b[0m\u2190 \u001b[0mWrite .review-gauntlet/turns/RGS-1ea05b9608cb/open__fe4669baabb0.json"}
+{"stream": "stderr", "text": "Wrote file successfully."}
+{"stream": "stderr", "text": "\u001b[0m"}
+{"event": "verdict_detected", "verdict": {"path": ".review-gauntlet/turns/RGS-1ea05b9608cb/open__fe4669baabb0.json", "task_key": "open__fe4669baabb0.json", "schema_version": 2, "verdict": "finish", "summary": "Resolved all listed findings for .devcontainer/devcontainer.json by confirming the mutable devcontainer image tag and unpinned cargo install issues as real; marks were already recorded in the active session.", "completed_finding_ids": ["RGF-0001", "RGF-0002", "RGF-0003"], "remaining_finding_ids": [], "resolutions": [], "next_turn_instructions": "No remaining findings for this file in this invocation.", "error": null}, "artifact": ".review-gauntlet/runs/2a16af39dbaf49e29d3831af73d243f2/verdict.json"}
+{"event": "agent_completed", "returncode": -9, "failed": false}

@@ -1,0 +1,37 @@
+[0m
+> build · kani/auto
+[0m
+[0m→ [0mSkill "review-gauntlet"
+[0m
+[0m# [0mTodos
+[•] .devcontainer/devcontainer.json を検査する
+[ ] verdict.json を作成する
+[ ] review-gauntlet validate-verdict を通す
+[0m
+[0m→ [0mRead .devcontainer/devcontainer.json[90m [offset=1, limit=200][0m
+[0m
+[0m# [0mTodos
+[✓] .devcontainer/devcontainer.json を検査する
+[•] verdict.json を作成する
+[ ] review-gauntlet validate-verdict を通す
+[0m
+[0m✱ [0mGlob ".review-gauntlet/runs/1/cells/RGC-43e26861c0de25c5/verdict.json"[90m in . · 0 matches[0m
+[0m
+[0m← [0mWrite .review-gauntlet/runs/1/cells/RGC-43e26861c0de25c5/verdict.json
+Wrote file successfully.
+[0m
+[0m# [0mTodos
+[✓] .devcontainer/devcontainer.json を検査する
+[✓] verdict.json を作成する
+[•] review-gauntlet validate-verdict を通す
+[0m
+[0m$ [0mreview-gauntlet validate-verdict "/Users/tumf/work/gptcommit/.review-gauntlet/runs/1/cells/RGC-43e26861c0de25c5/verdict.json" --expected-path .devcontainer/devcontainer.json
+valid: True
+path: /Users/tumf/work/gptcommit/.review-gauntlet/runs/1/cells/RGC-43e26861c0de25c5/verdict.json
+comment_count: 1
+[0m
+[0m# [0mTodos
+[✓] .devcontainer/devcontainer.json を検査する
+[✓] verdict.json を作成する
+[✓] review-gauntlet validate-verdict を通す
+[0m

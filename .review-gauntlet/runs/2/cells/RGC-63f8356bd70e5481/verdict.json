@@ -1,0 +1,13 @@
+{
+  "comments": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+      "content": "The version example is stale while the same line says only the latest 0.x release is supported. This can lead reporters to provide or assume an unsupported old version; use a current example or a generic placeholder that won't become inaccurate.",
+      "start_line": 29,
+      "end_line": 29,
+      "existing_code": " - Version [e.g. v0.5.1] (Note only the latest 0.x version is supported)",
+      "suggestion_code": " - Version [e.g. v0.5.x] (Note only the latest 0.x version is supported)",
+      "thinking": "Cargo.toml reports the current package version as 0.5.17, so v0.5.1 is an outdated example adjacent to a latest-version support policy."
+    }
+  ]
+}
