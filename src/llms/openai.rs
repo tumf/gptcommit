@@ -1,23 +1,21 @@
-use anyhow::{anyhow, bail, Ok, Result};
+use anyhow::{anyhow, bail, Result};
 use std::fmt;
 use std::fmt::Debug;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use async_trait::async_trait;
 
 use reqwest::{tls, Proxy};
-use tiktoken_rs::{async_openai::get_chat_completion_max_tokens, get_completion_max_tokens};
+use serde::Deserialize;
+use tiktoken_rs::o200k_base;
 
-const DEFAULT_MAX_TOKENS: usize = 4096;
-const FALLBACK_MODEL: &str = "gpt-4o";
+const DEFAULT_CONTEXT_SIZE: usize = 128_000;
 
 use crate::{settings::OpenAISettings, util::HTTP_USER_AGENT};
 use async_openai::{
     config::{OpenAIConfig, OPENAI_API_BASE},
-    types::{
-        ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs,
-        CreateCompletionRequestArgs, Role,
-    },
+    types::{ChatCompletionRequestMessageArgs, CreateCompletionRequestArgs, Role},
     Client,
 };
 
@@ -26,7 +24,26 @@ const COMPLETION_TOKEN_LIMIT: usize = 100;
 
 pub(crate) struct OpenAIClient {
     model: String,
+    api_base: String,
+    api_key: String,
+    http_client: reqwest::Client,
+    context_size: AtomicUsize,
     client: Client<OpenAIConfig>,
+}
+
+#[derive(Deserialize)]
+struct ChatCompletionResponse {
+    choices: Vec<ChatCompletionChoice>,
+}
+
+#[derive(Deserialize)]
+struct ChatCompletionChoice {
+    message: ChatCompletionMessage,
+}
+
+#[derive(Deserialize)]
+struct ChatCompletionMessage {
+    content: Option<String>,
 }
 
 impl Debug for OpenAIClient {
@@ -53,7 +70,6 @@ impl OpenAIClient {
         if api_base == OPENAI_API_BASE && api_key.is_empty() {
             bail!("No OpenAI API key found. Please provide a valid API key.");
         }
-        // TODO make configurable
         let mut http_client = reqwest::Client::builder()
             .gzip(true)
             .brotli(true)
@@ -61,7 +77,6 @@ impl OpenAIClient {
             .user_agent(HTTP_USER_AGENT);
 
         if api_base == OPENAI_API_BASE {
-            // Optimized HTTP client
             http_client = http_client
                 .http2_prior_knowledge()
                 .https_only(true)
@@ -81,7 +96,8 @@ impl OpenAIClient {
                 http_client = http_client.proxy(Proxy::all(proxy)?);
             }
         }
-        openai_client = openai_client.with_http_client(http_client.build()?);
+        let http_client = http_client.build()?;
+        openai_client = openai_client.with_http_client(http_client.clone());
 
         if settings.retries.unwrap_or_default() > 0 {
             let backoff = backoff::ExponentialBackoffBuilder::new()
@@ -91,13 +107,16 @@ impl OpenAIClient {
         }
         Ok(Self {
             model,
+            api_base,
+            api_key,
+            http_client,
+            context_size: AtomicUsize::new(0),
             client: openai_client,
         })
     }
 
     pub(crate) fn should_use_chat_completion(model: &str) -> bool {
         let model = model.to_lowercase();
-        // Only use the legacy completions API for known old models
         let legacy_models = [
             "text-davinci",
             "text-curie",
@@ -108,88 +127,79 @@ impl OpenAIClient {
         !legacy_models.iter().any(|prefix| model.starts_with(prefix))
     }
 
-    fn fallback_model_for_token_counting(model: &str) -> Option<&'static str> {
-        (model != FALLBACK_MODEL).then_some(FALLBACK_MODEL)
-    }
-
-    fn guess_context_size(model: &str) -> usize {
-        if model.to_lowercase().starts_with("gpt-") {
-            128_000
-        } else {
-            tiktoken_rs::model::get_context_size(model)
+    async fn fetch_context_size(&self) -> usize {
+        let cached = self.context_size.load(Ordering::Relaxed);
+        if cached > 0 {
+            return cached;
         }
-    }
 
-    fn token_limit_with_fallback<F>(model: &str, mut token_limit: F) -> usize
-    where
-        F: FnMut(&str) -> Result<usize>,
-    {
-        match token_limit(model) {
-            std::result::Result::Ok(limit) => limit,
-            Err(model_error) => {
-                let Some(fallback_model) = Self::fallback_model_for_token_counting(model) else {
-                    warn!(
-                        "Tokenizer lookup failed for fallback model '{}', using default limit {}: {}",
-                        model, DEFAULT_MAX_TOKENS, model_error
-                    );
-                    return DEFAULT_MAX_TOKENS;
-                };
+        let url = format!(
+            "{}/models/{}",
+            self.api_base.trim_end_matches('/'),
+            self.model
+        );
 
-                warn!(
-                    "Unknown model '{}', using {} as tokenizer proxy: {}",
-                    model, fallback_model, model_error
-                );
-                match token_limit(fallback_model) {
-                    std::result::Result::Ok(fallback_limit) => {
-                        Self::adjust_fallback_token_limit(model, fallback_model, fallback_limit)
-                    }
-                    Err(fallback_error) => {
-                        warn!(
-                            "Tokenizer proxy '{}' also failed for model '{}', using default limit {}: {}",
-                            fallback_model, model, DEFAULT_MAX_TOKENS, fallback_error
-                        );
-                        DEFAULT_MAX_TOKENS
-                    }
+        let size = match self
+            .http_client
+            .get(&url)
+            .bearer_auth(&self.api_key)
+            .send()
+            .await
+        {
+            Ok(resp) => match resp.json::<serde_json::Value>().await {
+                Ok(json) => json
+                    .get("max_model_len")
+                    .or_else(|| json.get("max_tokens"))
+                    .or_else(|| json.get("context_window"))
+                    .or_else(|| json.get("context_length"))
+                    .and_then(|v: &serde_json::Value| v.as_u64())
+                    .map(|v| v as usize)
+                    .unwrap_or(DEFAULT_CONTEXT_SIZE),
+                Err(e) => {
+                    debug!("Failed to parse /v1/models response: {}", e);
+                    DEFAULT_CONTEXT_SIZE
                 }
+            },
+            Err(e) => {
+                debug!(
+                    "Failed to fetch /v1/models/{}, using default context size {}: {}",
+                    self.model, DEFAULT_CONTEXT_SIZE, e
+                );
+                DEFAULT_CONTEXT_SIZE
             }
-        }
+        };
+
+        self.context_size.store(size, Ordering::Relaxed);
+        size
     }
 
-    fn adjust_fallback_token_limit(
-        original_model: &str,
-        fallback_model: &str,
-        fallback_limit: usize,
-    ) -> usize {
-        let fallback_context_size = tiktoken_rs::model::get_context_size(fallback_model);
-        let prompt_tokens = fallback_context_size.saturating_sub(fallback_limit);
-        Self::guess_context_size(original_model).saturating_sub(prompt_tokens)
+    fn count_tokens(text: &str) -> usize {
+        o200k_base()
+            .map(|bpe| bpe.encode_with_special_tokens(text).len())
+            .unwrap_or_else(|_| text.len() / 4)
     }
 
-    fn get_completion_prompt_token_limit(model: &str, prompt: &str) -> usize {
-        Self::token_limit_with_fallback(model, |tokenizer_model| {
-            get_completion_max_tokens(tokenizer_model, prompt)
-        })
+    fn chat_max_tokens(context_size: usize, prompt: &str) -> usize {
+        let prompt_tokens = Self::count_tokens(prompt);
+        let overhead = 10;
+        context_size.saturating_sub(prompt_tokens + overhead)
     }
 
-    fn get_chat_prompt_token_limit(
-        model: &str,
-        messages: &[async_openai::types::ChatCompletionRequestMessage],
-    ) -> usize {
-        Self::token_limit_with_fallback(model, |tokenizer_model| {
-            get_chat_completion_max_tokens(tokenizer_model, messages)
-        })
+    fn completion_max_tokens(context_size: usize, prompt: &str) -> usize {
+        let prompt_tokens = Self::count_tokens(prompt);
+        context_size.saturating_sub(prompt_tokens)
     }
 
     pub(crate) async fn get_completions(&self, prompt: &str) -> Result<String> {
-        let prompt_token_limit = Self::get_completion_prompt_token_limit(&self.model, prompt);
+        let context_size = self.fetch_context_size().await;
+        let prompt_token_limit = Self::completion_max_tokens(context_size, prompt);
 
         if prompt_token_limit < COMPLETION_TOKEN_LIMIT {
             let error_msg =
-"Skipping... The diff is too large for the current model. Consider using a model with a larger context window.".to_string();
+            "Skipping... The diff is too large for the current model. Consider using a model with a larger context window.".to_string();
             warn!("{}", error_msg);
             bail!(error_msg)
         }
-        // Create request using builder pattern
         let request = CreateCompletionRequestArgs::default()
             .model(&self.model)
             .prompt(prompt)
@@ -202,11 +212,7 @@ impl OpenAIClient {
 
         debug!("Sending request to OpenAI:\n{:?}", request);
 
-        let response = self
-            .client
-            .completions() // Get the API "group" (completions, images, etc.) from the client
-            .create(request) // Make the API call in that "group"
-            .await?;
+        let response = self.client.completions().create(request).await?;
 
         let completion = response
             .choices
@@ -217,12 +223,34 @@ impl OpenAIClient {
         completion
     }
 
+    fn normalize_chat_completion_response(body: &str) -> &str {
+        let first_line = body.split('\n').next().unwrap_or(body);
+        first_line
+            .strip_suffix("data: [DONE]")
+            .unwrap_or(first_line)
+            .trim_end_matches('\n')
+            .trim_end_matches('\r')
+    }
+
+    fn parse_chat_completion_response(body: &str) -> Result<String> {
+        let body = Self::normalize_chat_completion_response(body);
+        let response: ChatCompletionResponse = serde_json::from_str(body)?;
+
+        response
+            .choices
+            .into_iter()
+            .next()
+            .and_then(|choice| choice.message.content)
+            .ok_or(anyhow!("No completion results returned from OpenAI."))
+    }
+
     pub(crate) async fn get_chat_completions(&self, prompt: &str) -> Result<String> {
         let messages = [ChatCompletionRequestMessageArgs::default()
             .role(Role::User)
             .content(prompt)
             .build()?];
-        let prompt_token_limit = Self::get_chat_prompt_token_limit(&self.model, &messages);
+        let context_size = self.fetch_context_size().await;
+        let prompt_token_limit = Self::chat_max_tokens(context_size, prompt);
 
         if prompt_token_limit < COMPLETION_TOKEN_LIMIT {
             let error_msg =
@@ -231,114 +259,84 @@ impl OpenAIClient {
             bail!(error_msg)
         }
 
-        let request = CreateChatCompletionRequestArgs::default()
-            .model(&self.model)
-            .messages(messages)
-            .build()?;
+        let body = serde_json::json!({
+            "model": self.model,
+            "messages": messages,
+        });
 
-        let response = self.client.chat().create(request).await?;
+        let response = self
+            .http_client
+            .post(format!(
+                "{}/chat/completions",
+                self.api_base.trim_end_matches('/')
+            ))
+            .bearer_auth(&self.api_key)
+            .json(&body)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
 
-        if let Some(choice) = response.choices.into_iter().next() {
-            debug!(
-                "{}: Role: {}  Content: {}",
-                choice.index,
-                choice.message.role,
-                choice.message.content.clone().unwrap_or_default()
-            );
-
-            return choice
-                .message
-                .content
-                .ok_or(anyhow!("No completion results returned from OpenAI."));
-        }
-
-        bail!("No completion results returned from OpenAI.")
+        Self::parse_chat_completion_response(&response)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
-
     use super::*;
 
     #[test]
-    fn known_completion_model_uses_existing_tiktoken_limit() {
-        let prompt = "Summarize this small diff.";
-
-        let expected = get_completion_max_tokens("gpt-4", prompt).unwrap();
-        let actual = OpenAIClient::get_completion_prompt_token_limit("gpt-4", prompt);
-
-        assert_eq!(actual, expected);
+    fn count_tokens_returns_reasonable_value() {
+        let tokens = OpenAIClient::count_tokens("Summarize this small diff.");
+        assert!(tokens > 3 && tokens < 20, "got {tokens}");
     }
 
     #[test]
-    fn unknown_gpt_completion_model_uses_fallback_proxy() {
-        let prompt = "Summarize this small diff.";
+    fn chat_max_tokens_deducts_overhead() {
+        let prompt = "Short prompt.";
+        let limit = OpenAIClient::chat_max_tokens(128_000, prompt);
+        let prompt_tokens = OpenAIClient::count_tokens(prompt);
 
-        let limit = OpenAIClient::get_completion_prompt_token_limit("gpt-5.3-codex-spark", prompt);
-
-        assert!(
-            limit > 100_000,
-            "unknown gpt-* models should keep a modern context window, got {limit}"
-        );
+        assert_eq!(limit, 128_000 - prompt_tokens - 10);
     }
 
     #[test]
-    fn unknown_gpt_chat_model_uses_fallback_proxy() {
-        let messages = [ChatCompletionRequestMessageArgs::default()
-            .role(Role::User)
-            .content("Summarize this small diff.")
-            .build()
-            .unwrap()];
+    fn completion_max_tokens_no_overhead() {
+        let prompt = "Short prompt.";
+        let limit = OpenAIClient::completion_max_tokens(128_000, prompt);
+        let prompt_tokens = OpenAIClient::count_tokens(prompt);
 
-        let limit = OpenAIClient::get_chat_prompt_token_limit("gpt-5.3-codex-spark", &messages);
-
-        assert!(
-            limit > 100_000,
-            "unknown gpt-* chat models should keep a modern context window, got {limit}"
-        );
+        assert_eq!(limit, 128_000 - prompt_tokens);
     }
 
     #[test]
-    fn token_limit_falls_back_to_default_when_proxy_fails() {
-        let calls = RefCell::new(Vec::new());
+    fn token_limit_clamps_at_zero() {
+        let prompt = "Small prompt.";
+        let context_size = OpenAIClient::count_tokens(prompt);
+        let limit = OpenAIClient::chat_max_tokens(context_size, prompt);
 
-        let limit = OpenAIClient::token_limit_with_fallback("gpt-5.3-codex-spark", |model| {
-            calls.borrow_mut().push(model.to_string());
-            Err(anyhow!("forced tokenizer failure"))
-        });
-
-        assert_eq!(limit, DEFAULT_MAX_TOKENS);
-        assert_eq!(
-            calls.into_inner(),
-            vec![
-                "gpt-5.3-codex-spark".to_string(),
-                FALLBACK_MODEL.to_string()
-            ]
-        );
+        assert_eq!(limit, 0);
     }
 
     #[test]
-    fn fallback_limit_uses_original_gpt_context_size() {
-        let fallback_prompt_tokens = 42;
-        let fallback_limit =
-            tiktoken_rs::model::get_context_size(FALLBACK_MODEL) - fallback_prompt_tokens;
+    fn parses_event_stream_like_non_streaming_chat_response() {
+        let body = r#"{"choices":[{"message":{"content":"ok"}}]}
+data: [DONE]
+"#;
 
-        let adjusted = OpenAIClient::adjust_fallback_token_limit(
-            "gpt-5.3-codex-spark",
-            FALLBACK_MODEL,
-            fallback_limit,
-        );
+        let completion = OpenAIClient::parse_chat_completion_response(body).unwrap();
+        assert_eq!(completion, "ok");
 
-        assert_eq!(adjusted, 128_000 - fallback_prompt_tokens);
+        let single_line = r#"{"choices":[{"message":{"content":"ok"}}]}data: [DONE]
+"#;
+        let completion2 = OpenAIClient::parse_chat_completion_response(single_line).unwrap();
+        assert_eq!(completion2, "ok");
     }
 }
 
 #[async_trait]
 impl LlmClient for OpenAIClient {
-    /// Sends a request to OpenAI's API to get a text completion.
-    /// It takes a prompt as input, and returns the completion.
     async fn completions(&self, prompt: &str) -> Result<String> {
         let completion = if OpenAIClient::should_use_chat_completion(&self.model) {
             self.get_chat_completions(prompt).await?
